@@ -31,8 +31,8 @@ final class HomeworkViewController: UIViewController {
     private func bind() {
         disposeBag.insert {
             let transitionSubject = PublishSubject<Void>()
-            let transformSubject = PublishSubject<Person>()
-            let transformSubject2 = PublishSubject<Person>()
+            let collectionViewAppendSubject = PublishSubject<Person>()
+            let tableViewAppendSubject = PublishSubject<Person>()
             
             sampleUsers
 //                .observe(on: ConcurrentDispatchQueueScheduler(queue: DispatchQueue.global()))
@@ -63,14 +63,14 @@ final class HomeworkViewController: UIViewController {
                 }
             
             tableView.rx.modelSelected(Person.self)
-                .bind(to: transformSubject)
+                .bind(to: collectionViewAppendSubject)
             
-            transformSubject
+            collectionViewAppendSubject
                 .withUnretained(usersSubject)
                 .compactMap(appendElement)
                 .bind(to: usersSubject)
             
-            transformSubject2
+            tableViewAppendSubject
                 .withUnretained(sampleUsers)
                 .compactMap(appendElement)
                 .bind(to: sampleUsers)
@@ -83,8 +83,7 @@ final class HomeworkViewController: UIViewController {
             searchBar.rx.searchButtonClicked
                 .withLatestFrom(searchBar.rx.text.orEmpty)
                 .map { Person(name: $0, email: "", profileImage: Person.list[0].profileImage) }
-                .bind(to: transformSubject2)
-            
+                .bind(to: tableViewAppendSubject)
             
             transitionSubject
                 .bind(withIgnoreOutput: self) {
