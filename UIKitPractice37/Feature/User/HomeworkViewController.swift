@@ -7,7 +7,6 @@
 
 import UIKit
 import SnapKit
-import Kingfisher
 import RxSwift
 import RxCocoa
 
@@ -24,6 +23,10 @@ extension PublishSubject {
 }
 
 final class HomeworkViewController: UIViewController {
+    deinit {
+        print(self, "deinit")
+    }
+    
     private let disposeBag = DisposeBag()
     
     private let tableView = UITableView()
@@ -38,39 +41,18 @@ final class HomeworkViewController: UIViewController {
      
     private func bind() {
         disposeBag.insert {
-            let transitionSubject = PublishSubject<Void>()
+            let transitionSubject = PublishSubject<Person>()
             let collectionViewAppendSubject = PublishSubject<Person>()
             let tableViewAppendSubject = PublishSubject<Person>()
             let sampleUsers = BehaviorSubject<[Person]>(value: Person.list)
             let usersSubject = BehaviorSubject<[Person]>(value: [])
             
             sampleUsers
-//                .observe(on: ConcurrentDispatchQueueScheduler(queue: DispatchQueue.global()))
-//                .map { (person: [Person]) throws -> [(name: String, image: UIImage)] in
-//                    let newPerson = person.compactMap { p -> (name: String, image: UIImage)? in
-//                        let name = p.name
-//                        let url = URL(string: p.profileImage)
-//                        
-//                        if let url, let data = try? Data(contentsOf: url), let image = UIImage(data: data) {
-//                            return (name, image)
-//                        }
-//                        
-//                        return nil
-//                    }
-//                    
-//                    return newPerson
-//                }
-//                .observe(on: MainScheduler.instance)
                 .bind(to: tableView.rx.items(cellIdentifier: PersonTableViewCell.identifier, cellType: PersonTableViewCell.self)) {
                     _ = $0
                     
-                    $2.usernameLabel.text = $1.name
-                    $2.detailButton.rx.tap.bind(to: transitionSubject).disposed(by: $2.disposeBag)
-                    
-                    if let url = URL(string: $1.profileImage) {
-                        $2.profileImageView.kf.indicatorType = .activity
-                        $2.profileImageView.kf.setImage(with: url)
-                    }
+                    $2.modelSubject.onNext($1)
+                    $2.buttonSubject.bind(to: transitionSubject).disposed(by: $2.disposeBag)
                 }
             
             tableView.rx.modelSelected(Person.self)
@@ -93,8 +75,9 @@ final class HomeworkViewController: UIViewController {
                 .bind(to: tableViewAppendSubject)
             
             transitionSubject
-                .bind(withIgnoreOutput: self) {
+                .bind(with: self) {
                     let vc = SecondViewController()
+                    vc.label.text = $1.name
                     $0.navigationController?.pushViewController(vc, animated: true)
                 }
         }

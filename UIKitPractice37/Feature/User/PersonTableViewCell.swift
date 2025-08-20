@@ -8,11 +8,20 @@
 import UIKit
 import SnapKit
 import RxSwift
+import RxCocoa
+import Kingfisher
 
 final class PersonTableViewCell: UITableViewCell {
     static let identifier = "PersonTableViewCell"
     
+    deinit {
+        print(self, "deinit")
+    }
+    
     var disposeBag = DisposeBag()
+    
+    var modelSubject = BehaviorSubject<Person?>(value: nil)
+    var buttonSubject = PublishSubject<Person>()
     
     let usernameLabel: UILabel = {
         let label = UILabel()
@@ -26,6 +35,7 @@ final class PersonTableViewCell: UITableViewCell {
         imageView.clipsToBounds = true
         imageView.backgroundColor = .systemMint
         imageView.layer.cornerRadius = 8
+        imageView.kf.indicatorType = .activity
         return imageView
     }()
     let detailButton: UIButton = {
@@ -43,6 +53,7 @@ final class PersonTableViewCell: UITableViewCell {
         
         self.selectionStyle = .none
         configure()
+        bind()
     }
     
     required init?(coder: NSCoder) {
@@ -74,8 +85,36 @@ final class PersonTableViewCell: UITableViewCell {
         }
     }
     
+    private func bind() {
+        let usernameLabelSubject = PublishSubject<Person>()
+        let profileImageViewSubject = PublishSubject<Person>()
+        
+        disposeBag.insert {
+            modelSubject
+                .compactMap(\.self)
+                .bind(to: usernameLabelSubject, profileImageViewSubject)
+            
+            usernameLabelSubject
+                .map(\.name)
+                .bind(to: usernameLabel.rx.text)
+            
+            profileImageViewSubject
+                .map(\.profileImage)
+                .compactMap(URL.init(string:))
+                .bind(with: self) {
+                    $0.profileImageView.kf.setImage(with: $1)
+                }
+            
+            detailButton.rx.tap
+                .withLatestFrom(modelSubject)
+                .compactMap(\.self)
+                .bind(to: buttonSubject)
+        }
+    }
+    
     override func prepareForReuse() {
         super.prepareForReuse()
         disposeBag = DisposeBag()
+        bind()
     }
 }
