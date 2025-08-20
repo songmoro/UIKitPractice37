@@ -11,12 +11,20 @@ import Kingfisher
 import RxSwift
 import RxCocoa
 
+extension PublishSubject {
+    func appendTo(_ subject: BehaviorSubject<[Element]>) -> any Disposable {
+        self.withUnretained(subject)
+            .compactMap(appendElement)
+            .bind(to: subject)
+    }
+    
+    private func appendElement(_ tuple: (BehaviorSubject<[Element]>, Element)) throws -> [Element] {
+        try tuple.0.value() + [tuple.1]
+    }
+}
+
 final class HomeworkViewController: UIViewController {
     private let disposeBag = DisposeBag()
-    private let disposeBag2 = DisposeBag()
-    
-    private let sampleUsers = BehaviorSubject<[Person]>(value: Person.list)
-    private let usersSubject = BehaviorSubject<[Person]>(value: [])
     
     private let tableView = UITableView()
     private var collectionView = UICollectionView(frame: .zero, collectionViewLayout: .init())
@@ -33,6 +41,8 @@ final class HomeworkViewController: UIViewController {
             let transitionSubject = PublishSubject<Void>()
             let collectionViewAppendSubject = PublishSubject<Person>()
             let tableViewAppendSubject = PublishSubject<Person>()
+            let sampleUsers = BehaviorSubject<[Person]>(value: Person.list)
+            let usersSubject = BehaviorSubject<[Person]>(value: [])
             
             sampleUsers
 //                .observe(on: ConcurrentDispatchQueueScheduler(queue: DispatchQueue.global()))
@@ -52,7 +62,8 @@ final class HomeworkViewController: UIViewController {
 //                }
 //                .observe(on: MainScheduler.instance)
                 .bind(to: tableView.rx.items(cellIdentifier: PersonTableViewCell.identifier, cellType: PersonTableViewCell.self)) {
-                    _ = ($0)
+                    _ = $0
+                    
                     $2.usernameLabel.text = $1.name
                     $2.detailButton.rx.tap.bind(to: transitionSubject).disposed(by: $2.disposeBag)
                     
@@ -66,14 +77,10 @@ final class HomeworkViewController: UIViewController {
                 .bind(to: collectionViewAppendSubject)
             
             collectionViewAppendSubject
-                .withUnretained(usersSubject)
-                .compactMap(appendElement)
-                .bind(to: usersSubject)
+                .appendTo(usersSubject)
             
             tableViewAppendSubject
-                .withUnretained(sampleUsers)
-                .compactMap(appendElement)
-                .bind(to: sampleUsers)
+                .appendTo(sampleUsers)
             
             usersSubject
                 .bind(to: collectionView.rx.items(cellIdentifier: UserCollectionViewCell.identifier, cellType: UserCollectionViewCell.self)) {
@@ -91,10 +98,6 @@ final class HomeworkViewController: UIViewController {
                     $0.navigationController?.pushViewController(vc, animated: true)
                 }
         }
-    }
-    
-    private func appendElement<T>(tuple: (BehaviorSubject<[T]>, T)) throws -> [T] {
-        try tuple.0.value() + [tuple.1]
     }
     
     private func configure() {
