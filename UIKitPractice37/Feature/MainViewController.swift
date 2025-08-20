@@ -13,7 +13,7 @@ import RxCocoa
 final class MainViewController: UIViewController {
     private let disposeBag = DisposeBag()
     
-    private let items = [NumbersViewController.self, SimpleValidationViewController.self]
+    private let items = [NumbersViewController.self, SimpleValidationViewController.self, HomeworkViewController.self]
     
     private let tableView: UITableView = {
         let tv = UITableView()
