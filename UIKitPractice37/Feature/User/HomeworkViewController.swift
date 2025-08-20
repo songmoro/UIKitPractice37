@@ -59,6 +59,7 @@ final class HomeworkViewController: UIViewController {
             
             searchBar.rx.searchButtonClicked
                 .withLatestFrom(searchBar.rx.text.orEmpty)
+                .distinctUntilChanged()
                 .map { Person(name: $0, email: "", profileImage: Person.list[0].profileImage) }
                 .bind(to: tableViewAppendSubject)
             
