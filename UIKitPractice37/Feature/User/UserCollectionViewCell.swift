@@ -11,7 +11,7 @@ import SnapKit
 final class UserCollectionViewCell: UICollectionViewCell {
     static let identifier = "UserCollectionViewCell"
     
-    private let label = UILabel()
+    let label = UILabel()
     
     override init(frame: CGRect) {
         super.init(frame: frame)

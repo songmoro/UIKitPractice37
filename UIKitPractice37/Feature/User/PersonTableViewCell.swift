@@ -7,17 +7,20 @@
 
 import UIKit
 import SnapKit
+import RxSwift
 
 final class PersonTableViewCell: UITableViewCell {
     static let identifier = "PersonTableViewCell"
     
-    private let usernameLabel: UILabel = {
+    var disposeBag = DisposeBag()
+    
+    let usernameLabel: UILabel = {
         let label = UILabel()
         label.font = .systemFont(ofSize: 18, weight: .bold)
         label.textColor = .black
         return label
     }()
-    private let profileImageView: UIImageView = {
+    let profileImageView: UIImageView = {
         let imageView = UIImageView()
         imageView.contentMode = .scaleAspectFit
         imageView.clipsToBounds = true
@@ -25,9 +28,9 @@ final class PersonTableViewCell: UITableViewCell {
         imageView.layer.cornerRadius = 8
         return imageView
     }()
-    private let detailButton: UIButton = {
+    let detailButton: UIButton = {
         let button = UIButton()
-        button.setTitle("받기", for: .normal)
+        button.setTitle("더보기", for: .normal)
         button.setTitleColor(.systemBlue, for: .normal)
         button.isUserInteractionEnabled = true
         button.backgroundColor = .lightGray
@@ -69,5 +72,10 @@ final class PersonTableViewCell: UITableViewCell {
             $0.height.equalTo(32)
             $0.width.equalTo(72)
         }
+    }
+    
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        disposeBag = DisposeBag()
     }
 }
