@@ -1,5 +1,5 @@
 //
-//  RxSwift+.swift
+//  ObservableType+.swift
 //  UIKitPractice37
 //
 //  Created by 송재훈 on 8/20/25.

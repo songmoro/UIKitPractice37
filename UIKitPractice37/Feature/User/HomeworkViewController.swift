@@ -10,18 +10,6 @@ import SnapKit
 import RxSwift
 import RxCocoa
 
-extension PublishSubject {
-    func appendTo(_ subject: BehaviorSubject<[Element]>) -> any Disposable {
-        self.withUnretained(subject)
-            .compactMap(appendElement)
-            .bind(to: subject)
-    }
-    
-    private func appendElement(_ tuple: (BehaviorSubject<[Element]>, Element)) throws -> [Element] {
-        try tuple.0.value() + [tuple.1]
-    }
-}
-
 final class HomeworkViewController: UIViewController {
     deinit {
         print(self, "deinit")
