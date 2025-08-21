@@ -18,3 +18,18 @@ extension PublishSubject {
         try tuple.0.value() + [tuple.1]
     }
 }
+
+//import RxSwift
+//import RxCocoa
+//
+//extension PublishRelay {
+//    func appendTo(_ subject: BehaviorRelay<[Element]>) -> any Disposable {
+//        self.withUnretained(subject)
+//            .compactMap(appendElement)
+//            .bind(to: subject)
+//    }
+//    
+//    private func appendElement(_ tuple: (BehaviorRelay<[Element]>, Element)) throws -> [Element] {
+//        tuple.0.value + [tuple.1]
+//    }
+//}

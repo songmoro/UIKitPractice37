@@ -10,12 +10,56 @@ import SnapKit
 import RxSwift
 import RxCocoa
 
+final class HomeworkViewModel {
+    private let disposeBag = DisposeBag()
+    
+    struct Input {
+        let searchButtonClicked: ControlEvent<Void>
+        let searchText: ControlProperty<String>
+        let modelSelected: ControlEvent<Person>
+    }
+    
+    struct Output {
+        let tableViewData: Driver<[Person]>
+        let collectionViewData: Driver<[Person]>
+    }
+    
+    func transform(_ input: Input) -> Output {
+        let tableViewData = BehaviorRelay<[Person]>(value: Person.list)
+        let collectionViewData = BehaviorRelay<[Person]>(value: [])
+        let appendTableViewData = PublishRelay<Person>()
+        
+        disposeBag.insert {
+            input.searchButtonClicked
+                .withLatestFrom(input.searchText)
+                .distinctUntilChanged()
+                .map { Person(name: $0, email: "", profileImage: Person.list[0].profileImage) }
+                .bind(to: appendTableViewData)
+            
+            appendTableViewData
+                .withLatestFrom(tableViewData) { $1 + [$0] }
+                .bind(to: tableViewData)
+            
+            input.modelSelected
+                .withLatestFrom(collectionViewData) { $1 + [$0] }
+                .bind(to: collectionViewData)
+        }
+        
+        return .init(
+            tableViewData: tableViewData.asDriver(),
+            collectionViewData: collectionViewData.asDriver()
+        )
+    }
+}
+
 final class HomeworkViewController: UIViewController {
     deinit {
         print(self, "deinit")
     }
     
     private let disposeBag = DisposeBag()
+    
+    private let viewModel = HomeworkViewModel()
     
     private let tableView = UITableView()
     private var collectionView = UICollectionView(frame: .zero, collectionViewLayout: .init())
@@ -28,44 +72,32 @@ final class HomeworkViewController: UIViewController {
     }
      
     private func bind() {
+        let output = viewModel.transform(
+            .init(
+                searchButtonClicked: searchBar.rx.searchButtonClicked,
+                searchText: searchBar.rx.text.orEmpty,
+                modelSelected: tableView.rx.modelSelected(Person.self)
+            )
+        )
+        
+        let transition = PublishRelay<Person>()
+        
         disposeBag.insert {
-            let transitionSubject = PublishSubject<Person>()
-            let collectionViewAppendSubject = PublishSubject<Person>()
-            let tableViewAppendSubject = PublishSubject<Person>()
-            let sampleUsers = BehaviorSubject<[Person]>(value: Person.list)
-            let usersSubject = BehaviorSubject<[Person]>(value: [])
-            
-            sampleUsers
-                .bind(to: tableView.rx.items(cellIdentifier: PersonTableViewCell.identifier, cellType: PersonTableViewCell.self)) {
-                    _ = $0
-                    
+            output.tableViewData
+                .drive(tableView.rx.items(cellIdentifier: PersonTableViewCell.identifier, cellType: PersonTableViewCell.self)) {
                     $2.modelSubject.onNext($1)
-                    $2.buttonSubject.bind(to: transitionSubject).disposed(by: $2.disposeBag)
+                    $2.buttonSubject.bind(to: transition).disposed(by: $2.disposeBag)
                 }
             
-            tableView.rx.modelSelected(Person.self)
-                .bind(to: collectionViewAppendSubject)
-            
-            collectionViewAppendSubject
-                .appendTo(usersSubject)
-            
-            tableViewAppendSubject
-                .appendTo(sampleUsers)
-            
-            usersSubject
-                .bind(to: collectionView.rx.items(cellIdentifier: UserCollectionViewCell.identifier, cellType: UserCollectionViewCell.self)) {
+            output.collectionViewData
+                .drive(collectionView.rx.items(cellIdentifier: UserCollectionViewCell.identifier, cellType: UserCollectionViewCell.self)) {
                     $2.label.text = $1.name
                 }
             
-            searchBar.rx.searchButtonClicked
-                .withLatestFrom(searchBar.rx.text.orEmpty)
-                .distinctUntilChanged()
-                .map { Person(name: $0, email: "", profileImage: Person.list[0].profileImage) }
-                .bind(to: tableViewAppendSubject)
-            
-            transitionSubject
+            transition
                 .bind(with: self) {
                     let vc = SecondViewController()
+                    vc.navigationItem.title = $1.name
                     vc.label.text = $1.name
                     $0.navigationController?.pushViewController(vc, animated: true)
                 }
