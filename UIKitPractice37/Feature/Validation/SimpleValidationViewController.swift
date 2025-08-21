@@ -10,8 +10,46 @@ import SnapKit
 import RxSwift
 import RxCocoa
 
+final class SimpleValidationViewModel {
+    deinit {
+        print(self, "deinit")
+    }
+    
+    struct Input {
+        let username: ControlProperty<String>
+        let password: ControlProperty<String>
+    }
+    struct Output {
+        let validUsername: Observable<Bool>
+        let validPassword: Observable<Bool>
+        let availableAccount: Observable<Bool>
+    }
+    
+    func transform(_ input: Input) -> Output {
+        let isValidUsername = input.username
+            .map { $0.count >= 4 }
+            .share()
+        
+        let isValidPassword = input.password
+            .map { $0.count >= 5 }
+            .share()
+        
+        let isAvailableAccount = Observable.combineLatest(isValidUsername, isValidPassword)
+            .map { $0 && $1 }
+            .share()
+        
+        return .init(validUsername: isValidUsername, validPassword: isValidPassword, availableAccount: isAvailableAccount)
+    }
+}
+
 final class SimpleValidationViewController: UIViewController {
+    deinit {
+        print(self, "deinit")
+    }
+    
     private let disposeBag = DisposeBag()
+    
+    private let viewModel = SimpleValidationViewModel()
     
     private var usernameTextField = UITextField()
     private var usernameValidLabel = UILabel()
@@ -66,48 +104,41 @@ final class SimpleValidationViewController: UIViewController {
             $0.height.equalTo(40)
         }
         
-        usernameTextField.borderStyle = .bezel
-        passwordTextField.borderStyle = .bezel
+        [usernameTextField, passwordTextField].forEach { $0.borderStyle = .bezel }
         signInButton.isEnabled = false
         signInButton.configuration?.title = "완료 및 뒤로 가기"
     }
     
     private func bind() {
-        let isUsernameTextFieldValid = usernameTextField.rx.text
-            .map { $0 != nil && $0!.count >= 4 }
-            .share()
-        
-        let isPasswordTextFieldValid = passwordTextField.rx.text
-            .map { $0 != nil && $0!.count >= 5 }
-            .share()
-        
-        let isAvailableAccount = Observable.combineLatest(isUsernameTextFieldValid, isPasswordTextFieldValid)
-            .map { $0 && $1 }
-            .share()
+        let output = viewModel.transform(
+            .init(
+                username: usernameTextField.rx.text.orEmpty,
+                password: passwordTextField.rx.text.orEmpty
+            )
+        )
         
         disposeBag.insert {
-            isUsernameTextFieldValid
+            output.validUsername
                 .map { $0 ? "올바른 입력입니다." : "닉네임은 최소 4글자입니다." }
                 .bind(to: usernameValidLabel.rx.text)
             
-            isUsernameTextFieldValid
+            output.validUsername
                 .map { $0 ? UIColor.systemGreen : UIColor.systemRed }
                 .bind(to: usernameValidLabel.rx.textColor)
             
-            isPasswordTextFieldValid
+            output.validPassword
                 .map { $0 ? "올바른 입력입니다." : "비밀번호는 최소 5글자입니다." }
                 .bind(to: passwordValidLabel.rx.text)
             
-            isPasswordTextFieldValid
+            output.validPassword
                 .map { $0 ? UIColor.systemGreen : UIColor.systemRed }
                 .bind(to: passwordValidLabel.rx.textColor)
             
-            isAvailableAccount
+            output.availableAccount
                 .bind(to: signInButton.rx.isEnabled)
             
             signInButton.rx.tap
-                .bind(with: self) {
-                    _ = $1
+                .bind(withIgnoreOutput: self) {
                     $0.navigationController?.popViewController(animated: true)
                 }
         }
